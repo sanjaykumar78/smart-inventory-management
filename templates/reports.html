@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h3>Reports</h3>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6>Sales Trend</h6>
+        <canvas id="reportsTrend" height="160"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h6>Monthly Summary</h6>
+        <p class="text-muted small">Placeholder summary metrics and downloadable reports will appear here.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6>Inventory Breakdown</h6>
+        <canvas id="reportsInv" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h6>Export</h6>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('export_products') }}">Export Products CSV</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% set labels = chart.labels if (chart is defined and chart.labels is defined) else ['Jan','Feb','Mar','Apr','May','Jun'] %}
+{% set sales = chart.sales if (chart is defined and chart.sales is defined) else [120,140,160,130,180,210] %}
+{% set d_labels = dist_labels if (dist_labels is defined) else ['Mobiles','Laptops','Accessories','Tablets'] %}
+{% set d_values = dist_values if (dist_values is defined) else [40,25,20,15] %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const labels = {{ labels|tojson }};
+  const sales = {{ sales|tojson }};
+
+  const trendCtx = document.getElementById('reportsTrend');
+  if (trendCtx) {
+    new Chart(trendCtx, {type:'line',data:{labels:labels,datasets:[{label:'Sales',data:sales,borderColor:'#0d6efd',backgroundColor:'rgba(13,110,253,0.08)',tension:0.3}]},options:{plugins:{legend:{display:false}}}})
+  }
+
+  const invCtx = document.getElementById('reportsInv');
+  if (invCtx) {
+    new Chart(invCtx, {type:'doughnut',data:{labels:{{ d_labels|tojson }},datasets:[{data:{{ d_values|tojson }},backgroundColor:['#0d6efd','#17c1ff','#198754','#ffc107','#6f42c1']}]},options:{plugins:{legend:{position:'bottom'}}}})
+  }
+});
+</script>
+
+{% endblock %}

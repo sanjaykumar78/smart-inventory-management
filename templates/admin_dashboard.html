@@ -1,0 +1,96 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h3 class="mb-4">Admin Overview</h3>
+
+<div class="row g-3">
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted">Total SKUs</h6>
+        <h3 class="fw-bold">—</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted">Low Stock</h6>
+        <h3 class="fw-bold text-warning">—</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted">Pending Reorders</h6>
+        <h3 class="fw-bold text-info">—</h3>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center shadow-sm">
+      <div class="card-body">
+        <h6 class="text-muted">Model Status</h6>
+        <h3 class="fw-bold">{{ 'Loaded' if model else 'Missing' }}</h3>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4">
+  <div class="col-lg-8">
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Forecast Trend (All SKUs)</h6>
+        <canvas id="adminForecastChart" height="120"></canvas>
+      </div>
+    </div>
+
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Top Movers (by predicted demand)</h6>
+        <table class="table table-sm">
+          <thead>
+            <tr><th>SKU</th><th>Predicted</th><th>Current</th><th>Reorder</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3 shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Activity Feed</h6>
+        <ul class="list-unstyled small mb-0">
+          <li>— No recent activity —</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h6 class="card-title">Quick Actions</h6>
+        <a href="/" class="btn btn-primary btn-sm mb-2">Predict</a>
+        <a href="#" class="btn btn-outline-secondary btn-sm mb-2">Manage Products</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Placeholder chart with no data yet
+  const ctxA = document.getElementById('adminForecastChart');
+  if (ctxA) {
+    new Chart(ctxA, {
+      type: 'line',
+      data: {labels: [], datasets:[{label:'Forecast',data:[],borderColor:'#0d6efd',tension:0.3}]},
+      options:{plugins:{legend:{display:false}},scales:{x:{display:false}}}
+    });
+  }
+</script>
+{% endblock %}

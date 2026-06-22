@@ -1,0 +1,107 @@
+/* Theme overrides using body classes */
+
+/* Base colors for light theme */
+body.light-theme{
+  background:#f8f9fa;
+  color:#212529;
+}
+
+/* Dark theme base */
+body.dark-theme{
+  background:#121212;
+  color:#ffffff;
+}
+
+/* Navbar */
+body.dark-theme .navbar{
+  background:#1a1a1a !important;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+}
+body.dark-theme .navbar .navbar-brand,
+body.dark-theme .navbar .nav-link,
+body.dark-theme .navbar .nav-item span{
+  color: #ffffff !important;
+}
+
+/* Sidebar */
+body.dark-theme #sidebar,
+body.dark-theme .offcanvas{
+  background: #0f0f0f !important;
+  color: #e9ecef;
+}
+body.dark-theme #sidebar .nav-link,
+body.dark-theme .offcanvas .nav-link{
+  color: rgba(255,255,255,0.85);
+}
+body.dark-theme #sidebar .nav-link.active{
+  color: #0d6efd;
+  background: transparent;
+}
+
+/* Cards */
+body.dark-theme .card{
+  background: #1E1E1E;
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+body.dark-theme .card .card-title,
+body.dark-theme .card .card-text{
+  color: #ffffff;
+}
+
+/* Main content containers */
+body.dark-theme main, body.dark-theme .container-fluid{
+  color: #e9ecef;
+}
+
+/* Forms and inputs */
+body.dark-theme .form-control{
+  background:#121212;
+  border:1px solid rgba(255,255,255,0.08);
+  color:#f1f1f1;
+}
+body.dark-theme .form-control:focus{
+  background:#121212;
+  color:#fff;
+  border-color: rgba(13,110,253,0.6);
+  box-shadow: 0 0 0 .15rem rgba(13,110,253,0.08);
+}
+
+/* Buttons */
+body.dark-theme .btn-primary{
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+body.dark-theme .btn-outline-primary{
+  color:#0d6efd;
+  border-color: rgba(13,110,253,0.3);
+}
+
+/* Alerts */
+body.dark-theme .alert{
+  background: #262626;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Tables */
+body.dark-theme table thead th{
+  color:#e9ecef;
+}
+body.dark-theme table tbody td{
+  color:#e9ecef;
+}
+
+/* Charts canvas background fallback */
+body.dark-theme canvas{background:transparent}
+
+/* Links */
+body.dark-theme a{color:#60a5fa}
+
+/* Avatar button adjustment when dark */
+body.dark-theme .avatar-btn{border:1px solid rgba(255,255,255,0.06);background:#111;color:#0d6efd}
+
+/* Small screens: ensure offcanvas inherits dark style */
+@media (max-width: 767px){
+  body.dark-theme .offcanvas{background:#0f0f0f}
+}

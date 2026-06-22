@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Predict - Smart Inventory{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h3 class="card-title mb-4">Smart Inventory - Demand Prediction</h3>
+
+        <form method="post" novalidate>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Inventory Level</label>
+              <input name="inventory_level" type="number" step="any" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Units Sold</label>
+              <input name="units_sold" type="number" step="any" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Units Ordered</label>
+              <input name="units_ordered" type="number" step="any" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Price</label>
+              <input name="price" type="number" step="any" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Discount (%)</label>
+              <input name="discount" type="number" step="any" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Competitor Pricing</label>
+              <input name="competitor_pricing" type="number" step="any" class="form-control" required>
+            </div>
+          </div>
+          <div class="mt-4 d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary">Predict Demand</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <p class="mt-3 text-muted small">Model file should be saved as <strong>demand_prediction_model.pkl</strong> in the project root.</p>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,6 @@
+{
+  "sanjay": {
+    "password_hash": "scrypt:32768:8:1$84ls11ZLxhBgdh9m$be5d1a9a2b991f6fd905ff88b0f6d30dc77810a5634b52f40a5ead90f372c5c3411255657bd96667b891fa9042c8ff4d5d864eb4fdd6b281f5099c3924b25d38",
+    "role": "user"
+  }
+}

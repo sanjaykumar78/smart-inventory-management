@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h3>Add Product</h3>
+<div class="card">
+  <div class="card-body">
+    <form method="post">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">SKU (optional)</label>
+          <input name="sku" class="form-control">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Name</label>
+          <input name="name" required class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Category</label>
+          <input name="category" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Region</label>
+          <input name="region" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Inventory</label>
+          <input type="number" step="any" name="inventory" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Price</label>
+          <input type="number" step="any" name="price" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Reorder Level</label>
+          <input type="number" step="any" name="reorder_level" class="form-control">
+        </div>
+      </div>
+      <div class="mt-3">
+        <button class="btn btn-primary">Add</button>
+        <a class="btn btn-secondary" href="{{ url_for('products') }}">Cancel</a>
+      </div>
+    </form>
+  </div>
+ </div>
+{% endblock %}

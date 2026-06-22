@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Smart Inventory Management — Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/login.css') }}" rel="stylesheet">
+  </head>
+  <body>
+    <main class="login-hero">
+      <div class="hero-bg" aria-hidden="true"></div>
+      <div class="hero-overlay"></div>
+
+      <div class="container">
+        <div class="hero-inner d-flex w-100 justify-content-between align-items-center">
+          <!-- Left: Branding / Features -->
+          <div class="left-panel d-none d-lg-flex align-items-center animate-slide-left">
+            <div class="px-5 text-white">
+              <h1 class="display-5 fw-bold">Smart Inventory Management</h1>
+              <p class="lead mb-4">AI-Powered Demand Prediction System</p>
+
+              <ul class="features-list list-unstyled mb-4">
+                <li><span class="check">✓</span> Demand Forecasting</li>
+                <li><span class="check">✓</span> Stock Optimization</li>
+                <li><span class="check">✓</span> Reorder Recommendations</li>
+                <li><span class="check">✓</span> Stockout Prevention</li>
+              </ul>
+
+              <div class="stats d-flex gap-4">
+                <div class="stat">
+                  <div class="stat-value">73,100+</div>
+                  <div class="stat-label">Records Analyzed</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">99.35%</div>
+                  <div class="stat-label">Prediction Accuracy</div>
+                </div>
+                <div class="stat">
+                  <div class="stat-value">AI-Driven</div>
+                  <div class="stat-label">Insights</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Glass login card -->
+          <div class="right-panel d-flex justify-content-center align-items-center">
+              <div class="login-card animate-fade-up">
+                <div class="card-body p-4">
+                  <div class="text-center mb-3">
+                    <h4 class="mb-0">Welcome back</h4>
+                    <p class="text-muted small">Sign in to your enterprise account</p>
+                  </div>
+
+                  {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, msg in messages %}
+                            <div class="alert alert-{{ category }}">
+                                {{ msg }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                  {% endwith %}
+
+                  <form method="post" class="mb-3">
+                    <div class="mb-3">
+                      <label class="form-label">Username</label>
+                      <input name="username" class="form-control form-control-lg" placeholder="your.username" required>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label">Password</label>
+                      <div class="input-group input-group-lg">
+                        <input id="login-password" name="password" type="password" class="form-control form-control-lg" placeholder="••••••" required>
+                        <button class="btn btn-outline-primary" type="button" id="login-password-toggle" aria-label="Toggle password visibility"><i class="bi bi-eye"></i></button>
+                      </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="" id="remember">
+                        <label class="form-check-label small" for="remember">Remember me</label>
+                      </div>
+                      <a class="small" href="#">Forgot?</a>
+                    </div>
+
+                    <div class="d-grid">
+                      <button class="btn btn-primary btn-lg btn-gradient">Login</button>
+                    </div>
+                  </form>
+
+                  <div class="text-center small text-muted">Don't have an account? <a href="/register">Register</a></div>
+                </div>
+              </div>
+              </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Password visibility toggle for login
+      (function(){
+        const btn = document.getElementById('login-password-toggle');
+        const input = document.getElementById('login-password');
+        if(btn && input){
+          btn.addEventListener('click', function(){
+            const icon = btn.querySelector('i');
+            if(input.type === 'password'){
+              input.type = 'text';
+              icon.classList.remove('bi-eye'); icon.classList.add('bi-eye-slash');
+            } else {
+              input.type = 'password';
+              icon.classList.remove('bi-eye-slash'); icon.classList.add('bi-eye');
+            }
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>
+

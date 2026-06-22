@@ -1,0 +1,55 @@
+/* Premium SaaS-style login CSS */
+:root{
+  --accent-1: #0d6efd;
+  --dark-1: rgba(6,30,63,0.9);
+  --glass-bg: rgba(255,255,255,0.06);
+}
+
+.login-hero{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial}
+.hero-bg{position:absolute;inset:0;background-image: url('/static/images/warehouse.jpg');background-size:cover;background-position:center;filter:grayscale(10%) brightness(0.6);z-index:0}
+.hero-bg{background-image: url('/static/images/warehouse.jpg'), url('https://images.unsplash.com/photo-1586201375761-83865001e1a9?auto=format&fit=crop&w=1650&q=80');}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(135deg, rgba(2,18,66,0.75), rgba(7,38,85,0.85));z-index:1}
+
+.hero-inner{position:relative;z-index:2;max-width:1200px;padding:48px 24px;display:flex;justify-content:space-between;align-items:center}
+.left-panel{position:relative;z-index:2;max-width:700px;display:flex;align-items:center}
+.left-panel h1{font-size:2.6rem;margin-bottom:8px}
+.left-panel p.lead{font-size:1.05rem;color:rgba(255,255,255,0.9);margin-bottom:18px}
+.features-list li{font-size:1.05rem;margin:0.6rem 0;opacity:0.95}
+.features-list .check{display:inline-block;width:28px;height:28px;background:linear-gradient(90deg,#17c1ff,#0d6efd);border-radius:6px;color:white;text-align:center;line-height:28px;margin-right:10px;font-weight:700;box-shadow:0 6px 18px rgba(13,110,253,0.18)}
+
+.stats{margin-top:1.5rem}
+.stat{background:rgba(255,255,255,0.04);padding:12px 16px;border-radius:8px}
+.stat-value{font-weight:700;font-size:1.15rem}
+.stat-label{font-size:0.8rem;color:rgba(255,255,255,0.8)}
+
+/* Login card (glassmorphism) */
+.login-card{width:420px;max-width:420px;border-radius:12px;background:var(--glass-bg);backdrop-filter: blur(10px);border:1px solid rgba(255,255,255,0.08);box-shadow:0 8px 30px rgba(2,18,66,0.45);z-index:3;transform:translateY(0)}
+.login-card .card-body{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01))}
+.btn-gradient{background:linear-gradient(90deg,var(--accent-1),#17c1ff);border:none}
+.btn-gradient:hover{transform:translateY(-2px);box-shadow:0 10px 30px rgba(13,110,253,0.18)}
+
+/* animations */
+.animate-fade-up{animation:fadeUp 700ms ease both}
+.animate-slide-left{animation:slideLeft 700ms ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes slideLeft{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:none}}
+
+/* Mobile responsiveness */
+@media (max-width: 991px){
+  .left-panel{display:none}
+  .hero-inner{padding:24px}
+  .login-card{margin:40px auto;width:100%;max-width:420px}
+  .hero-bg{filter:grayscale(0) brightness(0.5)}
+}
+
+@media (max-width: 575px){
+  .login-card{padding:6px}
+  .login-card .card-body{padding:18px}
+}
+
+/* small touches */
+.login-card input.form-control{border-radius:8px}
+.login-card .form-check-input{width:18px;height:18px}
+
+/* Ensure no extra space below hero */
+body,html{margin:0;padding:0}

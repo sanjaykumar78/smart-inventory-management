@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block head_extra %}
+<link href="{{ url_for('static', filename='css/settings.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const btn = document.getElementById('avatarUploadBtn');
+  const input = document.getElementById('profile_picture');
+  const preview = document.getElementById('avatarPreview');
+
+  if(!btn || !input || !preview) return;
+
+  btn.addEventListener('click', function(){
+    // Use explicit click on the hidden input as requested
+    document.getElementById('profile_picture').click();
+  });
+
+  input.addEventListener('change', function(e){
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    if(!file.type.startsWith('image/')){
+      alert('Please select an image file');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      // Replace current avatar immediately with selected image
+      preview.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="mb-0">Settings</h2>
+  <div class="small text-muted">Account and preferences</div>
+</div>
+
+<div class="row g-4">
+  <!-- Profile -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-person-circle me-2"></i>Profile</h5>
+        <form method="post" enctype="multipart/form-data" novalidate>
+          <input type="hidden" name="form_name" value="profile">
+          <div class="row g-3 mt-2">
+            <div class="col-12 d-flex justify-content-center mb-3">
+              <div class="avatar-wrapper position-relative">
+                {% if settings.profile_picture %}
+                  <img id="avatarPreview" src="{{ url_for('static', filename='uploads/' ~ settings.profile_picture) }}" alt="Profile" class="avatar-img rounded-circle"/>
+                {% else %}
+                  <img id="avatarPreview" src="https://via.placeholder.com/200?text=%20" alt="Profile" class="avatar-img rounded-circle"/>
+                {% endif %}
+                <button type="button" id="avatarUploadBtn" class="avatar-btn" aria-label="Upload profile picture"><i class="bi bi-plus-lg"></i></button>
+              </div>
+              <input id="profile_picture" type="file" name="profile_picture" accept="image/*" hidden>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Username</label>
+              <input name="username" type="text" class="form-control" value="{{ settings.username }}">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Full Name</label>
+              <input name="full_name" type="text" class="form-control" value="{{ settings.full_name }}">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label">Email</label>
+              <input name="email" type="email" class="form-control" value="{{ settings.email }}" required pattern="[^@ \t\r\n]+@[^@ \t\r\n]+\.[^@ \t\r\n]+">
+            </div>
+
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-primary">Update Profile</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Appearance -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-palette me-2"></i>Appearance</h5>
+        <form method="post" novalidate>
+          <input type="hidden" name="form_name" value="appearance">
+          <div class="row g-3 mt-2">
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="theme" id="themeLight" value="light" {% if settings.theme == 'light' %}checked{% endif %}>
+                <label class="form-check-label" for="themeLight">Light Mode</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="theme" id="themeDark" value="dark" {% if settings.theme == 'dark' %}checked{% endif %}>
+                <label class="form-check-label" for="themeDark">Dark Mode</label>
+              </div>
+            </div>
+
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-outline-primary">Save Theme</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security -->
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-shield-lock me-2"></i>Security</h5>
+        <form method="post" class="row g-3 mt-2" novalidate>
+          <input type="hidden" name="form_name" value="security">
+          <div class="col-md-4">
+            <label class="form-label">Current Password</label>
+            <input name="current_password" type="password" class="form-control" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">New Password</label>
+            <input name="new_password" type="password" class="form-control" minlength="8" required>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Confirm Password</label>
+            <input name="confirm_password" type="password" class="form-control" minlength="8" required>
+          </div>
+          <div class="col-12 d-flex justify-content-end">
+            <button class="btn btn-warning">Update Password</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

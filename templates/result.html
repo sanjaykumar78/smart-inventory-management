@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Prediction Result - Smart Inventory{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center py-5">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h3 class="card-title mb-4">Prediction Result</h3>
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card mb-3">
+              <div class="card-body">
+                <h5 class="card-subtitle text-muted">Predicted Demand</h5>
+                <p class="display-6">{{ predicted_demand }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card mb-3">
+              <div class="card-body">
+                <h5 class="card-subtitle text-muted">Reorder Quantity</h5>
+                <p class="display-6">{{ reorder_quantity }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-3">
+          <h6>Stockout Risk</h6>
+          <div class="progress" style="height: 28px;">
+            <div class="progress-bar bg-danger" role="progressbar" style="width: {{ stockout_risk }}%;" aria-valuenow="{{ stockout_risk }}" aria-valuemin="0" aria-valuemax="100">{{ stockout_risk }}%</div>
+          </div>
+        </div>
+
+        <hr>
+        <h6>Inputs</h6>
+        <ul>
+          <li>Inventory Level: {{ inputs.inventory_level }}</li>
+          <li>Units Sold: {{ inputs.units_sold }}</li>
+          <li>Units Ordered: {{ inputs.units_ordered }}</li>
+          <li>Price: {{ inputs.price }}</li>
+          <li>Discount: {{ inputs.discount }}</li>
+          <li>Competitor Pricing: {{ inputs.competitor_pricing }}</li>
+        </ul>
+
+        <div class="d-flex justify-content-between mt-4">
+          <a href="/" class="btn btn-secondary">Back</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

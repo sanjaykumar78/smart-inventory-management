@@ -1,0 +1,14 @@
+{
+  "low_stock_threshold": 10,
+  "critical_stock_threshold": 3,
+  "default_reorder_quantity": 50,
+  "forecast_period_months": 6,
+  "forecast_frequency": "weekly",
+  "model_status": "Loaded",
+  "alert_low_stock": true,
+  "alert_reorder_suggestions": true,
+  "alert_demand_spike": true,
+  "currency": "USD",
+  "warehouse_location": "",
+  "default_category": ""
+}

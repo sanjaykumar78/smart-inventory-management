@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h3 class="mb-4">Inventory Overview</h3>
+
+<div class="row g-3">
+  <div class="col-md-3">
+    <div class="card kpi-card text-center">
+      <div class="card-body">
+        <div class="kpi-title">Total Products</div>
+        <div class="kpi-value">{{ kpis.total_products }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card text-center">
+      <div class="card-body">
+        <div class="kpi-title">Inventory Value</div>
+        <div class="kpi-value">{{ kpis.inventory_value }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card text-center">
+      <div class="card-body">
+        <div class="kpi-title">Predicted Demand</div>
+        <div class="kpi-value">{{ kpis.predicted_demand }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card kpi-card text-center">
+      <div class="card-body">
+        <div class="kpi-title">Low Stock Alerts</div>
+        <div class="kpi-value">{{ kpis.low_stock_alerts }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-4 g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6>Demand Forecast Trend</h6>
+        <canvas id="demandTrendChart" height="140"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h6>Recent Inventory Predictions</h6>
+        <div class="table-responsive">
+          <table class="table table-sm table-hover mb-0">
+            <thead>
+              <tr><th>Product Name</th><th>Current Stock</th><th>Predicted Demand</th><th>Stockout Risk</th></tr>
+            </thead>
+            <tbody>
+              {% for row in recent_inventory %}
+              <tr>
+                <td>{{ row.name }}</td>
+                <td>{{ row.inventory }}</td>
+                <td>{{ row.demand }}</td>
+                <td>{% set risk = 0 %}{% if row.inventory < row.demand %}{% set risk = ((row.demand - row.inventory)/row.demand*100)|round(1) %}{% endif %}{{ risk }}%</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6>AI Insights</h6>
+        <ul class="list-unstyled">
+          {% for rec in ai_recommendations %}
+            <li class="mb-2">• {{ rec }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h6>Inventory Distribution</h6>
+        <canvas id="invDistChart" height="160"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% set labels = chart.labels if (chart is defined and chart.labels is defined) else ['Jan','Feb','Mar','Apr','May','Jun'] %}
+{% set demand = chart.demand if (chart is defined and chart.demand is defined) else [120,140,160,130,180,210] %}
+{% set d_labels = dist_labels if (dist_labels is defined) else ['Mobiles','Laptops','Accessories','Tablets'] %}
+{% set d_values = dist_values if (dist_values is defined) else [40,25,20,15] %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const labels = {{ labels|tojson }};
+  const demandData = {{ demand|tojson }};
+
+  const demandCtx = document.getElementById('demandTrendChart');
+  if (demandCtx) {
+    new Chart(demandCtx, {type:'line',data:{labels:labels,datasets:[{label:'Demand',data:demandData,borderColor:'#0d6efd',tension:0.3}]},options:{plugins:{legend:{display:false}}}})
+  }
+  const invDistCtx = document.getElementById('invDistChart');
+  if (invDistCtx) {
+    new Chart(invDistCtx, {type:'doughnut',data:{labels:{{ d_labels|tojson }},datasets:[{data:{{ d_values|tojson }},backgroundColor:['#0d6efd','#17c1ff','#198754','#ffc107','#6f42c1']}]},options:{plugins:{legend:{position:'bottom'}}}})
+  }
+});
+
+{% endblock %}
