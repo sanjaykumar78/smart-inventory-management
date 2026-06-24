@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, flash, redirect, url_for, session
-from flask_mail import Mail, Message
 import joblib
 import os
 import pandas as pd
@@ -11,26 +10,16 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from flask import jsonify, send_file
 import csv
 import io
-import time
-import random
-from db import get_db_connection
-from db import get_db_connection
 
 app = Flask(__name__)
-print("TEST MAIL ROUTE LOADED")
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-
-app.config['MAIL_USERNAME'] = 'sanjaykumarsak711@gmail.com'
-app.config['MAIL_PASSWORD'] = 'qjml lknd xjra czub'
-
-mail = Mail(app)
 app.secret_key = "change-this-secret"
 
 # Upload folder for profile pictures
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# --- Simple file-based user store for scaffolded auth ---
+USERS_PATH = "users.json"
 
 login_manager = LoginManager()
 login_manager.login_view = "login"
@@ -44,96 +33,26 @@ class User(UserMixin):
         self.role = role
 
 
-def get_user_by_username(username: str):
-    conn = None
+def load_users():
+    if not os.path.exists(USERS_PATH):
+        return {}
     try:
-        conn = get_db_connection()
-        cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
-        row = cur.fetchone()
-        cur.close()
-        return row
-    except Exception as e:
-        print("DB error get_user_by_username:", e)
-        return None
-    finally:
-        if conn:
-            conn.close()
+        with open(USERS_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
 
 
-def create_user(username: str, password_hash: str, full_name: str = '', email: str = '', theme: str = 'light', profile_picture: str = ''):
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO users (username, full_name, email, password, theme, profile_picture) VALUES (%s, %s, %s, %s, %s, %s)",
-            (username, full_name, email, password_hash, theme, profile_picture)
-        )
-        conn.commit()
-        cur.close()
-        return True
-    except Exception as e:
-        print("DB error create_user:", e)
-        return False
-    finally:
-        if conn:
-            conn.close()
-
-
-def update_user_profile(username: str, full_name: str, email: str, profile_picture: str = None):
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        if profile_picture is not None:
-            cur.execute("UPDATE users SET full_name=%s, email=%s, profile_picture=%s WHERE username=%s", (full_name, email, profile_picture, username))
-        else:
-            cur.execute("UPDATE users SET full_name=%s, email=%s WHERE username=%s", (full_name, email, username))
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print("DB error update_user_profile:", e)
-    finally:
-        if conn:
-            conn.close()
-
-
-def update_user_theme(username: str, theme: str):
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE users SET theme=%s WHERE username=%s", (theme, username))
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print("DB error update_user_theme:", e)
-    finally:
-        if conn:
-            conn.close()
-
-
-def update_user_password(username: str, password_hash: str):
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute("UPDATE users SET password=%s WHERE username=%s", (password_hash, username))
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print("DB error update_user_password:", e)
-    finally:
-        if conn:
-            conn.close()
+def save_users(users: dict):
+    with open(USERS_PATH, "w", encoding="utf-8") as f:
+        json.dump(users, f, indent=2)
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    row = get_user_by_username(user_id)
-    if row:
-        return User(row.get('username'), 'user')
+    users = load_users()
+    if user_id in users:
+        return User(user_id, users[user_id].get("role", "user"))
     return None
 
 MODEL_PATH = "demand_prediction_model.pkl"
@@ -251,24 +170,18 @@ def register():
             flash('Provide username and password', 'danger')
             return render_template('register.html')
 
-        # check existing user in DB
-        existing = get_user_by_username(username)
-        if existing:
+        users = load_users()
+        if username in users:
             flash('Username already exists', 'danger')
             return render_template('register.html')
 
-        password_hash = generate_password_hash(password)
-        created = create_user(username, password_hash, role=role, full_name='', email='', theme='light', profile_picture='')
-        if not created:
-            flash('Registration failed', 'danger')
-            return render_template('register.html')
+        users[username] = {
+            'password_hash': generate_password_hash(password),
+            'role': role,
+        }
+        save_users(users)
         user = User(username, role)
         login_user(user)
-        # initialize session defaults
-        session.setdefault('user_settings', {})['profile_picture'] = ''
-        session.setdefault('user_settings', {})['full_name'] = ''
-        session.setdefault('user_settings', {})['email'] = ''
-        session['theme'] = 'light'
         flash('Registered and logged in', 'success')
         return redirect(url_for('dashboard'))
 
@@ -281,25 +194,14 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
 
-        user_row = get_user_by_username(username)
-        print("DB USER:", user_row)
-        if not user_row or not check_password_hash(user_row.get('password', ''), password):
+        users = load_users()
+        user_record = users.get(username)
+        if not user_record or not check_password_hash(user_record.get('password_hash', ''), password):
             flash('Invalid credentials', 'danger')
             return render_template('login.html')
 
-        user = User(username, 'user')
+        user = User(username, user_record.get('role', 'user'))
         login_user(user)
-        # restore persisted user settings (profile picture, theme, etc.) into session
-        try:
-            urec = user_row or {}
-            session.setdefault('user_settings', {})['profile_picture'] = urec.get('profile_picture', session.get('user_settings', {}).get('profile_picture', ''))
-            session.setdefault('user_settings', {})['full_name'] = urec.get('full_name', session.get('user_settings', {}).get('full_name', ''))
-            session.setdefault('user_settings', {})['email'] = urec.get('email', session.get('user_settings', {}).get('email', ''))
-            # restore theme
-            session['theme'] = urec.get('theme', session.get('theme', session.get('user_settings', {}).get('theme', 'light')))
-            print("Current session theme:", session.get('theme'))
-        except Exception:
-            pass
         flash('Logged in', 'success')
         return redirect(url_for('dashboard'))
 
@@ -516,61 +418,26 @@ def inventory_configuration():
 @login_required
 def settings():
     # Defaults pulled from session or current_user
-    # try to source persisted user profile values from users.json if session doesn't have them
-    persisted_row = get_user_by_username(current_user.id) or {}
-    persisted = {
-        'profile_picture': persisted_row.get('profile_picture', '') if persisted_row else '',
-        'full_name': persisted_row.get('full_name', '') if persisted_row else '',
-        'email': persisted_row.get('email', '') if persisted_row else '',
-        'theme': persisted_row.get('theme', 'light') if persisted_row else 'light'
-    }
     defaults = {
-        'profile_picture': session.get('user_settings', {}).get('profile_picture', '') or persisted.get('profile_picture', ''),
+        'profile_picture': session.get('user_settings', {}).get('profile_picture', ''),
         'username': current_user.id,
-        'full_name': session.get('user_settings', {}).get('full_name', '') or persisted.get('full_name', ''),
-        'email': session.get('user_settings', {}).get('email', '') or persisted.get('email', ''),
+        'full_name': session.get('user_settings', {}).get('full_name', ''),
+        'email': session.get('user_settings', {}).get('email', ''),
         'role': getattr(current_user, 'role', 'user'),
-        'theme': session.get('theme', None) or session.get('user_settings', {}).get('theme', '') or persisted.get('theme', 'light'),
+        'theme': session.get('user_settings', {}).get('theme', 'light'),
     }
 
     if request.method == 'POST':
         form_name = request.form.get('form_name')
 
-        # debug logs requested by user
-        print("FORM NAME:", form_name)
-        print("REQUEST FILES:", request.files)
-        if 'profile_picture' in request.files:
-            print("PROFILE PICTURE FOUND")
-        else:
-            print("PROFILE PICTURE NOT FOUND")
-
         # PROFILE form
         if form_name == 'profile':
-            print("PROFILE UPDATE BLOCK EXECUTED")
-            # upload validation
-            uploaded_file = request.files.get('profile_picture')
-            if uploaded_file:
-                print("FILENAME:", uploaded_file.filename)
-            else:
-                print("No uploaded file object for 'profile_picture'")
-
-            if uploaded_file and getattr(uploaded_file, 'filename', None):
-                upload_dir = os.path.join(app.static_folder, 'uploads')
-                os.makedirs(upload_dir, exist_ok=True)
-                filename = secure_filename(uploaded_file.filename)
-                save_path = os.path.join(upload_dir, filename)
-                uploaded_file.save(save_path)
-                print("SAVED:", save_path)
-
-                # persist filename to defaults, session and DB
+            pic = request.files.get('profile_picture')
+            if pic and pic.filename:
+                filename = secure_filename(pic.filename)
+                target = os.path.join(UPLOAD_FOLDER, filename)
+                pic.save(target)
                 defaults['profile_picture'] = filename
-                session.setdefault('user_settings', {})['profile_picture'] = filename
-                try:
-                    update_user_profile(current_user.id, defaults.get('full_name', ''), defaults.get('email', ''), profile_picture=filename)
-                except Exception as e:
-                    print("Failed to persist profile_picture:", e)
-
-                flash('Profile picture uploaded successfully', 'success')
 
             # basic validation
             full_name = request.form.get('full_name', '').strip()
@@ -580,32 +447,19 @@ def settings():
                 return redirect(url_for('settings'))
             defaults['full_name'] = full_name
             defaults['email'] = email
-            # save to session
+            # save
             session.setdefault('user_settings', {}).update({
                 'profile_picture': defaults['profile_picture'],
                 'full_name': defaults['full_name'],
                 'email': defaults['email']
             })
-            # persist to DB so settings survive logout/login
-            try:
-                update_user_profile(current_user.id, defaults['full_name'], defaults['email'], profile_picture=defaults['profile_picture'])
-            except Exception:
-                pass
             flash('Profile updated.', 'success')
             return redirect(url_for('settings'))
 
         # APPEARANCE form
         if form_name == 'appearance':
             theme = request.form.get('theme', 'light')
-            # Save theme to session and persist to user record
-            session['theme'] = theme
             session.setdefault('user_settings', {})['theme'] = theme
-            print("Theme selected:", theme)
-            print("Current session theme:", session.get('theme'))
-            try:
-                update_user_theme(current_user.id, theme)
-            except Exception:
-                pass
             flash('Theme saved.', 'success')
             return redirect(url_for('settings'))
 
@@ -617,15 +471,16 @@ def settings():
             if not current_pw or not new_pw or not confirm_pw:
                 flash('All password fields are required.', 'danger')
                 return redirect(url_for('settings'))
-            user_row = get_user_by_username(current_user.id)
-            print("DB USER:", user_row)
-            if not user_row or not check_password_hash(user_row.get('password', ''), current_pw):
+            users = load_users()
+            user_record = users.get(current_user.id)
+            if not user_record or not check_password_hash(user_record.get('password_hash',''), current_pw):
                 flash('Current password is incorrect.', 'danger')
                 return redirect(url_for('settings'))
             if new_pw != confirm_pw:
                 flash('New passwords do not match.', 'danger')
                 return redirect(url_for('settings'))
-            update_user_password(current_user.id, generate_password_hash(new_pw))
+            users[current_user.id]['password_hash'] = generate_password_hash(new_pw)
+            save_users(users)
             flash('Password updated successfully.', 'success')
             return redirect(url_for('settings'))
 
@@ -720,128 +575,6 @@ def dashboard():
     }
     return render_template('user_dashboard.html', kpis=user_kpis, chart=chart, recent_inventory=recent_inventory, ai_recommendations=ai_recommendations, dist_labels=dist_labels, dist_values=dist_values)
 
-@app.route('/test-mail')
-def test_mail():
-    try:
-        msg = Message(
-            subject="Smart Inventory Test",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=["sanjaykumarsak711@gmail.com"]
-        )
-
-        msg.body = "Congratulations! Flask-Mail is working successfully."
-
-        mail.send(msg)
-
-        return "Email sent successfully!"
-
-    except Exception as e:
-        return f"Error sending email: {str(e)}"
-    
-print("SEND OTP ROUTE LOADED")
-
-@app.route('/send-otp', methods=['POST'])
-def send_otp():
-    try:
-        email = request.form.get('email')
-
-        otp = str(random.randint(100000, 999999))
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute(
-            "INSERT INTO password_otps (email, otp) VALUES (%s, %s)",
-            (email, otp)
-        )
-
-        conn.commit()
-
-        msg = Message(
-            subject="Smart Inventory Password Reset OTP",
-            sender=app.config['MAIL_USERNAME'],
-            recipients=[email]
-        )
-
-        msg.body = f"""
-Your OTP for Smart Inventory password reset is:
-
-{otp}
-
-Do not share this OTP with anyone.
-"""
-
-        mail.send(msg)
-
-        cur.close()
-        conn.close()
-
-        return "OTP Sent Successfully"
-
-    except Exception as e:
-        return f"Error: {str(e)}"
-    
-@app.route('/verify-otp', methods=['POST'])
-def verify_otp():
-    try:
-        email = request.form.get('email')
-        otp = request.form.get('otp')
-
-        conn = get_db_connection()
-        cur = conn.cursor(dictionary=True)
-
-        cur.execute(
-            """
-            SELECT otp
-            FROM password_otps
-            WHERE email=%s
-            ORDER BY id DESC
-            LIMIT 1
-            """,
-            (email,)
-        )
-
-        row = cur.fetchone()
-
-        cur.close()
-        conn.close()
-
-        if row and row['otp'] == otp:
-            return "VALID"
-
-        return "INVALID OTP"
-
-    except Exception as e:
-        return f"Error: {str(e)}"
-    
-@app.route('/reset-password', methods=['POST'])
-def reset_password():
-    try:
-        email = request.form.get('email')
-        new_password = request.form.get('new_password')
-
-        hashed_password = generate_password_hash(new_password)
-
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        cur.execute(
-            "UPDATE users SET password=%s WHERE email=%s",
-            (hashed_password, email)
-        )
-
-        conn.commit()
-
-        cur.close()
-        conn.close()
-
-        return "Password Updated Successfully"
-
-    except Exception as e:
-        return f"Error: {str(e)}"
-
-print("BOTTOM OF FILE REACHED")
 
 if __name__ == "__main__":
-    print("STARTING FLASK SERVER")
     app.run(debug=True, host="0.0.0.0", port=5000)

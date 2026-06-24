@@ -32,17 +32,6 @@ document.addEventListener('DOMContentLoaded', function(){
     };
     reader.readAsDataURL(file);
   });
-
-  // Debug: listen for profile form submit
-  const profileFormInput = document.querySelector('input[name="form_name"][value="profile"]');
-  if (profileFormInput) {
-    const profileForm = profileFormInput.closest('form');
-    if (profileForm) {
-      profileForm.addEventListener('submit', function(){
-        console.log('PROFILE FORM SUBMITTED');
-      });
-    }
-  }
 });
 </script>
 {% endblock %}
@@ -53,10 +42,10 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="small text-muted">Account and preferences</div>
 </div>
 
-<div class="row g-4 align-items-stretch">
+<div class="row g-4">
   <!-- Profile -->
-  <div class="col-lg-6 d-flex">
-    <div class="card shadow-sm flex-fill">
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
       <div class="card-body">
         <h5 class="card-title"><i class="bi bi-person-circle me-2"></i>Profile</h5>
         <form method="post" enctype="multipart/form-data" novalidate>
@@ -90,18 +79,18 @@ document.addEventListener('DOMContentLoaded', function(){
             </div>
 
             <div class="col-12 d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary">Update Profile</button>
+              <button class="btn btn-primary">Update Profile</button>
             </div>
           </div>
         </form>
       </div>
     </div>
-</div>
+  </div>
 
-  <!-- Appearance + Security (combined on right) -->
-  <div class="col-lg-6 d-flex">
-    <div class="card shadow-sm flex-fill">
-      <div class="card-body d-flex flex-column">
+  <!-- Appearance -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm">
+      <div class="card-body">
         <h5 class="card-title"><i class="bi bi-palette me-2"></i>Appearance</h5>
         <form method="post" novalidate>
           <input type="hidden" name="form_name" value="appearance">
@@ -122,21 +111,26 @@ document.addEventListener('DOMContentLoaded', function(){
             </div>
           </div>
         </form>
+      </div>
+    </div>
+  </div>
 
-        <hr class="my-4">
-
-        <h6 class="mb-3">Security Settings</h6>
-        <form method="post" class="row g-3 mt-0 mb-0" novalidate>
+  <!-- Security -->
+  <div class="col-12">
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-shield-lock me-2"></i>Security</h5>
+        <form method="post" class="row g-3 mt-2" novalidate>
           <input type="hidden" name="form_name" value="security">
-          <div class="col-12">
+          <div class="col-md-4">
             <label class="form-label">Current Password</label>
             <input name="current_password" type="password" class="form-control" required>
           </div>
-          <div class="col-12">
+          <div class="col-md-4">
             <label class="form-label">New Password</label>
             <input name="new_password" type="password" class="form-control" minlength="8" required>
           </div>
-          <div class="col-12">
+          <div class="col-md-4">
             <label class="form-label">Confirm Password</label>
             <input name="confirm_password" type="password" class="form-control" minlength="8" required>
           </div>
@@ -144,112 +138,9 @@ document.addEventListener('DOMContentLoaded', function(){
             <button class="btn btn-warning">Update Password</button>
           </div>
         </form>
-
-        <div class="mt-3">
-  <button
-      type="button"
-      class="btn btn-link p-0"
-      data-bs-toggle="modal"
-      data-bs-target="#forgotPasswordModal">
-      Forgot Password?
-  </button>
-</div>
-
       </div>
     </div>
   </div>
 </div>
-<!-- Forgot Password Modal -->
-<div class="modal fade" id="forgotPasswordModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
 
-      <div class="modal-header">
-        <h5 class="modal-title">Reset Password</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <div class="modal-body">
-
-        <div class="mb-3">
-          <label>Email</label>
-          <input type="email" id="resetEmail" class="form-control">
-        </div>
-
-        <div class="mb-3">
-          <button class="btn btn-primary w-100" onclick="sendOTP()">
-            Send OTP
-          </button>
-        </div>
-
-        <div class="mb-3">
-          <label>OTP</label>
-          <input type="text" id="otp" class="form-control">
-        </div>
-
-        <div class="mb-3">
-          <button class="btn btn-success w-100" onclick="verifyOTP()">
-            Verify OTP
-          </button>
-        </div>
-
-        <div class="mb-3">
-          <label>New Password</label>
-          <input type="password" id="newPassword" class="form-control">
-        </div>
-
-        <div class="mb-3">
-          <button class="btn btn-danger w-100" onclick="resetPassword()">
-            Reset Password
-          </button>
-        </div>
-
-      </div>
-
-    </div>
-  </div>
-</div>
-<script>
-function sendOTP() {
-    fetch('/send-otp', {
-        method: 'POST',
-        headers: {
-            'Content-Type':'application/x-www-form-urlencoded'
-        },
-        body: 'email=' + encodeURIComponent(
-            document.getElementById('resetEmail').value
-        )
-    })
-    .then(response => response.text())
-    .then(data => alert(data));
-}
-
-function verifyOTP() {
-    fetch('/verify-otp', {
-        method: 'POST',
-        headers: {
-            'Content-Type':'application/x-www-form-urlencoded'
-        },
-        body:
-            'email=' + encodeURIComponent(document.getElementById('resetEmail').value)
-            + '&otp=' + encodeURIComponent(document.getElementById('otp').value)
-    })
-    .then(response => response.text())
-    .then(data => alert(data));
-}
-
-function resetPassword() {
-    fetch('/reset-password', {
-        method: 'POST',
-        headers: {
-            'Content-Type':'application/x-www-form-urlencoded'
-        },
-        body:
-            'email=' + encodeURIComponent(document.getElementById('resetEmail').value)
-            + '&new_password=' + encodeURIComponent(document.getElementById('newPassword').value)
-    })
-    .then(response => response.text())
-    .then(data => alert(data));
-}
-</script>
 {% endblock %}
