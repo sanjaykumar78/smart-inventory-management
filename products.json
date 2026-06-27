@@ -1,0 +1,20 @@
+[
+  {
+    "sku": "SKU-1782312369",
+    "name": "APPLE",
+    "category": "GADGETS",
+    "region": "INDIA ",
+    "inventory": 10.0,
+    "price": 100000.0,
+    "reorder_level": 5.0
+  },
+  {
+    "sku": "SKU-1782549447",
+    "name": "SAMSUNG",
+    "category": "MOBILES",
+    "region": "INDIA ",
+    "inventory": 15.0,
+    "price": 125000.0,
+    "reorder_level": 20.0
+  }
+]

@@ -1,5 +1,10 @@
 {% extends 'base.html' %}
 
+{% block head_extra %}
+  <link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/dashboard-enhancements.css') }}" rel="stylesheet">
+{% endblock %}
+
 {% block content %}
 <h3 class="mb-4">Inventory Overview</h3>
 
@@ -9,6 +14,7 @@
       <div class="card-body">
         <div class="kpi-title">Total Products</div>
         <div class="kpi-value">{{ kpis.total_products }}</div>
+        <div class="small text-muted">Target: <span class="editable-target" data-key="ud_target_total_products">{{ (local_targets.total_products if (local_targets is defined and local_targets.total_products is defined) else kpis.total_products) }}</span></div>
       </div>
     </div>
   </div>
@@ -38,6 +44,63 @@
   </div>
 </div>
 
+<!-- Smart Alerts + Confidence + Forecast -->
+<div class="row g-3 mt-3">
+  <div class="col-lg-6">
+    <div class="card alert-summary-card">
+      <div class="card-body d-flex align-items-center justify-content-between">
+        <div>
+          <div class="card-subtitle">Smart Alerts</div>
+          <div class="alert-items d-flex gap-3 mt-2">
+            <div class="small-alert">
+              <div class="alert-icon bg-danger text-white"><i class="bi bi-bell-fill"></i></div>
+              <div>
+                <div class="alert-label">Low Stock</div>
+                <div class="alert-value">{{ kpis.low_stock_alerts }}</div>
+              </div>
+            </div>
+            <div class="small-alert">
+              <div class="alert-icon bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill"></i></div>
+              <div>
+                <div class="alert-label">Overstock</div>
+                <div class="alert-value">{{ kpis.overstock_count|default(0) }}</div>
+              </div>
+            </div>
+            <div class="small-alert">
+              <div class="alert-icon bg-info text-white"><i class="bi bi-graph-up-arrow"></i></div>
+              <div>
+                <div class="alert-label">Demand Spikes</div>
+                <div class="alert-value">{{ kpis.demand_spikes|default(0) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card ai-confidence-card text-center">
+      <div class="card-body">
+        <div class="card-subtitle">AI Prediction Confidence</div>
+        <div class="confidence-ring mt-3" data-confidence="{{ kpis.prediction_confidence|default(72) }}">
+          <div class="confidence-value">{{ kpis.prediction_confidence|default(72) }}%</div>
+        </div>
+        <div class="mt-2 small text-muted">Model confidence for next 30 days</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card forecast-card">
+      <div class="card-body">
+        <div class="card-subtitle">Forecast Calendar</div>
+        <div id="forecastList" class="mt-2 small"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="row mt-4 g-3">
   <div class="col-lg-8">
     <div class="card mb-3">
@@ -47,21 +110,25 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card predictions-card">
       <div class="card-body">
         <h6>Recent Inventory Predictions</h6>
         <div class="table-responsive">
-          <table class="table table-sm table-hover mb-0">
+          <table class="table table-sm table-hover mb-0 predictions-table">
             <thead>
               <tr><th>Product Name</th><th>Current Stock</th><th>Predicted Demand</th><th>Stockout Risk</th></tr>
             </thead>
             <tbody>
               {% for row in recent_inventory %}
+              {% set risk = 0 %}
+              {% if row.inventory < row.demand %}
+                {% set risk = ((row.demand - row.inventory)/row.demand*100)|round(1) %}
+              {% endif %}
               <tr>
-                <td>{{ row.name }}</td>
-                <td>{{ row.inventory }}</td>
-                <td>{{ row.demand }}</td>
-                <td>{% set risk = 0 %}{% if row.inventory < row.demand %}{% set risk = ((row.demand - row.inventory)/row.demand*100)|round(1) %}{% endif %}{{ risk }}%</td>
+                <td data-label="Product Name">{{ row.name }}</td>
+                <td data-label="Current Stock">{{ row.inventory }}</td>
+                <td data-label="Predicted Demand">{{ row.demand }}</td>
+                <td data-label="Stockout Risk" class="stockout-risk {% if risk <= 20 %}risk-low{% elif risk <= 50 %}risk-medium{% else %}risk-high{% endif %}">{{ risk }}%</td>
               </tr>
               {% endfor %}
             </tbody>
@@ -77,7 +144,13 @@
         <h6>AI Insights</h6>
         <ul class="list-unstyled">
           {% for rec in ai_recommendations %}
-            <li class="mb-2">• {{ rec }}</li>
+            <li class="mb-2 ai-recommendation d-flex justify-content-between align-items-center">
+              <div>• {{ rec }}</div>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-success rec-approve">Approve</button>
+                <button class="btn btn-outline-danger rec-reject">Reject</button>
+              </div>
+            </li>
           {% endfor %}
         </ul>
       </div>
@@ -91,6 +164,8 @@
     </div>
   </div>
 </div>
+
+
 
 {% set labels = chart.labels if (chart is defined and chart.labels is defined) else ['Jan','Feb','Mar','Apr','May','Jun'] %}
 {% set demand = chart.demand if (chart is defined and chart.demand is defined) else [120,140,160,130,180,210] %}
@@ -111,5 +186,21 @@ document.addEventListener('DOMContentLoaded', function(){
     new Chart(invDistCtx, {type:'doughnut',data:{labels:{{ d_labels|tojson }},datasets:[{data:{{ d_values|tojson }},backgroundColor:['#0d6efd','#17c1ff','#198754','#ffc107','#6f42c1']}]},options:{plugins:{legend:{position:'bottom'}}}})
   }
 });
+
+// Inject chart-data JSON for enhancement scripts
+</script>
+
+<script id="chart-data" type="application/json">
+{
+  "labels": {{ labels|tojson }},
+  "demand": {{ demand|tojson }},
+  "dist_labels": {{ d_labels|tojson }},
+  "dist_values": {{ d_values|tojson }}
+}
+</script>
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/dashboard-enhancements.js') }}"></script>
+{% endblock %}
 
 {% endblock %}

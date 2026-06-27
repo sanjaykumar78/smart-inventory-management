@@ -87,10 +87,13 @@ body.dark-theme .alert{
 /* Tables */
 body.dark-theme table thead th{
   color:#e9ecef;
+  background: rgba(255,255,255,0.03);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 body.dark-theme table tbody td{
   color:#e9ecef;
 }
+body.dark-theme table tbody tr{ border-bottom:1px solid rgba(255,255,255,0.02); }
 
 /* Charts canvas background fallback */
 body.dark-theme canvas{background:transparent}

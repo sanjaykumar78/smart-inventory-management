@@ -8,11 +8,12 @@ import json
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
-from flask import jsonify, send_file
+from flask import jsonify, send_file, make_response
 import csv
 import io
 import time
 import random
+from datetime import datetime
 from db import get_db_connection
 from db import get_db_connection
 
@@ -61,14 +62,14 @@ def get_user_by_username(username: str):
             conn.close()
 
 
-def create_user(username: str, password_hash: str, full_name: str = '', email: str = '', theme: str = 'light', profile_picture: str = ''):
+def create_user(username: str, password_hash: str, full_name: str = '', email: str = '', theme: str = 'light', profile_picture: str = '', role: str = 'user'):
     conn = None
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute(
-            "INSERT INTO users (username, full_name, email, password, theme, profile_picture) VALUES (%s, %s, %s, %s, %s, %s)",
-            (username, full_name, email, password_hash, theme, profile_picture)
+            "INSERT INTO users (username, full_name, email, password, theme, profile_picture, role) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (username, full_name, email, password_hash, theme, profile_picture, role)
         )
         conn.commit()
         cur.close()
@@ -157,6 +158,104 @@ PRODUCTS_PATH = 'products.json'
 INVENTORY_CONFIG_PATH = 'inventory_config.json'
 
 
+def init_db():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS products (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                sku VARCHAR(100) UNIQUE NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                category VARCHAR(100),
+                region VARCHAR(100),
+                inventory DECIMAL(10,2) DEFAULT 0,
+                price DECIMAL(10,2) DEFAULT 0,
+                reorder_level DECIMAL(10,2) DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                created_by VARCHAR(100)
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS manager_notes (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                note_text LONGTEXT,
+                last_saved TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS activity_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT,
+                action VARCHAR(100) NOT NULL,
+                details VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS inventory_notifications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                product_sku VARCHAR(100),
+                title VARCHAR(255),
+                severity VARCHAR(50),
+                message VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS reorder_history (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                product_sku VARCHAR(100),
+                quantity INT DEFAULT 0,
+                reason VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print("DB init error:", e)
+    finally:
+        if conn:
+            conn.close()
+
+
+def seed_sample_products():
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) AS c FROM products")
+        count = cur.fetchone()[0]
+        if count == 0:
+            cur.execute("""
+                INSERT INTO products (sku, name, category, region, inventory, price, reorder_level) VALUES
+                (%s, %s, %s, %s, %s, %s, %s),
+                (%s, %s, %s, %s, %s, %s, %s),
+                (%s, %s, %s, %s, %s, %s, %s)
+            """, (
+                'SKU-1001', 'Widget A', 'Electronics', 'North', 120, 25.5, 50,
+                'SKU-1002', 'Widget B', 'Accessories', 'South', 15, 18.0, 20,
+                'SKU-1003', 'Widget C', 'Electronics', 'West', 0, 40.0, 10
+            ))
+            conn.commit()
+        cur.close()
+    except Exception as e:
+        print("Seed products error:", e)
+    finally:
+        if conn:
+            conn.close()
+
+
+init_db()
+seed_sample_products()
+
+
 def load_products():
     if not os.path.exists(PRODUCTS_PATH):
         return []
@@ -170,6 +269,222 @@ def load_products():
 def save_products(products):
     with open(PRODUCTS_PATH, 'w', encoding='utf-8') as f:
         json.dump(products, f, indent=2)
+
+
+def get_current_user_id():
+    try:
+        if getattr(current_user, 'is_authenticated', False):
+            user_row = get_user_by_username(current_user.id)
+            return user_row.get('id') if user_row else None
+    except Exception:
+        return None
+    return None
+
+
+def serialize_product(row):
+    if not row:
+        return None
+    return {
+        'id': row.get('id'),
+        'sku': row.get('sku'),
+        'name': row.get('name'),
+        'category': row.get('category') or '',
+        'region': row.get('region') or '',
+        'inventory': float(row.get('inventory') or 0),
+        'price': float(row.get('price') or 0),
+        'reorder_level': float(row.get('reorder_level') or 0),
+        'created_at': row.get('created_at'),
+        'updated_at': row.get('updated_at')
+    }
+
+
+def compute_product_status(product):
+    inventory = float(product.get('inventory') or 0)
+    reorder_level = float(product.get('reorder_level') or 0)
+    if inventory <= 0:
+        return 'critical'
+    if inventory <= reorder_level:
+        return 'low'
+    if inventory > reorder_level * 2:
+        return 'over'
+    return 'in'
+
+
+def get_products_from_db(search='', category='', region='', status='', sort_by='name', sort_dir='asc'):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        query = 'SELECT * FROM products WHERE 1=1'
+        params = []
+        if search:
+            like = f'%{search}%'
+            query += ' AND (sku LIKE %s OR name LIKE %s OR category LIKE %s OR region LIKE %s)'
+            params.extend([like, like, like, like])
+        if category:
+            query += ' AND category = %s'
+            params.append(category)
+        if region:
+            query += ' AND region = %s'
+            params.append(region)
+        if status:
+            if status == 'critical':
+                query += ' AND inventory <= 0'
+            elif status == 'low':
+                query += ' AND inventory <= reorder_level'
+            elif status == 'over':
+                query += ' AND inventory > reorder_level * 2'
+            else:
+                query += ' AND inventory > 0 AND inventory > reorder_level'
+        order_field = 'name'
+        if sort_by in {'price', 'inventory', 'reorder_level', 'category', 'region', 'sku'}:
+            order_field = sort_by
+        direction = 'ASC' if sort_dir != 'desc' else 'DESC'
+        query += f' ORDER BY {order_field} {direction}'
+        cur.execute(query, params)
+        rows = cur.fetchall()
+        return [serialize_product(row) for row in rows]
+    except Exception as e:
+        print('DB get_products error:', e)
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+def build_inventory_summary(products):
+    total_products = len(products)
+    total_inventory = sum(float(p.get('inventory') or 0) for p in products)
+    inventory_value = sum((float(p.get('inventory') or 0) * float(p.get('price') or 0)) for p in products)
+    low_stock = sum(1 for p in products if float(p.get('inventory') or 0) <= float(p.get('reorder_level') or 0))
+    out_of_stock = sum(1 for p in products if float(p.get('inventory') or 0) <= 0)
+    average_stock = round(total_inventory / total_products, 2) if total_products else 0
+    stock_health = round(max(0, min(100, 100 - (low_stock / total_products * 50) - (out_of_stock / total_products * 30) + (average_stock / max(1, total_inventory or 1) * 10)))) if total_products else 100
+    return {
+        'total_products': total_products,
+        'low_stock': low_stock,
+        'out_of_stock': out_of_stock,
+        'inventory_value': round(inventory_value, 2),
+        'average_stock': average_stock,
+        'stock_health': stock_health,
+    }
+
+
+def build_ai_recommendations(products):
+    recommendations = []
+    if not products:
+        return ['No product data available. Add inventory to generate recommendations.']
+    for product in products:
+        inventory = float(product.get('inventory') or 0)
+        reorder_level = float(product.get('reorder_level') or 0)
+        if inventory <= reorder_level:
+            recommendations.append(f"Increase stock for {product['name']} by {max(1, int(reorder_level - inventory + 10))} units.")
+        elif inventory > reorder_level * 2:
+            recommendations.append(f"Reduce stock for {product['name']} by {max(1, int(inventory - reorder_level * 2))} units.")
+    if not recommendations:
+        recommendations.append('Inventory looks balanced. No urgent actions needed.')
+    category_counts = {}
+    for product in products:
+        category_counts[product.get('category') or 'Uncategorized'] = category_counts.get(product.get('category') or 'Uncategorized', 0) + 1
+    if category_counts:
+        top_category = max(category_counts.items(), key=lambda item: item[1])[0]
+        recommendations.append(f"Highest selling category: {top_category}.")
+    return recommendations[:6]
+
+
+def sync_inventory_notifications(products):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM inventory_notifications')
+        for product in products:
+            inventory = float(product.get('inventory') or 0)
+            reorder_level = float(product.get('reorder_level') or 0)
+            if inventory <= 0:
+                cur.execute('INSERT INTO inventory_notifications (product_sku, title, severity, message) VALUES (%s, %s, %s, %s)', (product.get('sku'), 'Out of Stock', 'danger', f"{product.get('name')} is out of stock."))
+            elif inventory <= reorder_level:
+                cur.execute('INSERT INTO inventory_notifications (product_sku, title, severity, message) VALUES (%s, %s, %s, %s)', (product.get('sku'), 'Low Stock', 'warning', f"{product.get('name')} is below reorder level."))
+            elif inventory > reorder_level * 2:
+                cur.execute('INSERT INTO inventory_notifications (product_sku, title, severity, message) VALUES (%s, %s, %s, %s)', (product.get('sku'), 'High Inventory', 'info', f"{product.get('name')} has high inventory."))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print('Notification sync error:', e)
+    finally:
+        if conn:
+            conn.close()
+
+
+def log_activity(action, details='', user_id=None):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('INSERT INTO activity_logs (user_id, action, details) VALUES (%s, %s, %s)', (user_id, action, details))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print('Activity log error:', e)
+    finally:
+        if conn:
+            conn.close()
+
+
+def get_recent_activity(limit=10):
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute('SELECT action, details, created_at FROM activity_logs ORDER BY created_at DESC LIMIT %s', (limit,))
+        rows = cur.fetchall()
+        return rows
+    except Exception as e:
+        print('Recent activity error:', e)
+        return []
+    finally:
+        if conn:
+            conn.close()
+
+
+def build_chart_data(products):
+    category_map = {}
+    region_map = {}
+    for product in products:
+        category = product.get('category') or 'Uncategorized'
+        region = product.get('region') or 'Unassigned'
+        category_map[category] = category_map.get(category, 0) + float(product.get('inventory') or 0)
+        region_map[region] = region_map.get(region, 0) + float(product.get('inventory') or 0)
+    return {
+        'category_labels': list(category_map.keys()),
+        'category_values': [round(v, 2) for v in category_map.values()],
+        'region_labels': list(region_map.keys()),
+        'region_values': [round(v, 2) for v in region_map.values()],
+        'trend_labels': ['Current', 'Low', 'Critical'],
+        'trend_values': [max(0, len(products) - 1), sum(1 for p in products if float(p.get('inventory') or 0) <= float(p.get('reorder_level') or 0)), sum(1 for p in products if float(p.get('inventory') or 0) <= 0)]
+    }
+
+
+def build_pdf_report(products, summary):
+    buffer = io.BytesIO()
+    lines = [
+        'Inventory Report',
+        '================',
+        f"Total Products: {summary.get('total_products', 0)}",
+        f"Low Stock: {summary.get('low_stock', 0)}",
+        f"Out of Stock: {summary.get('out_of_stock', 0)}",
+        f"Inventory Value: ${summary.get('inventory_value', 0):,.2f}",
+        f"Average Stock: {summary.get('average_stock', 0)}",
+        f"Stock Health: {summary.get('stock_health', 0)}%",
+        '',
+        'Products:'
+    ]
+    for product in products:
+        lines.append(f"- {product.get('sku')} | {product.get('name')} | Stock: {product.get('inventory')} | Reorder: {product.get('reorder_level')}")
+    content = '\n'.join(lines).encode('latin-1', 'replace')
+    buffer.write(content)
+    buffer.seek(0)
+    return buffer
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -309,8 +624,12 @@ def login():
 @app.route('/products')
 @login_required
 def products():
-    products = load_products()
-    return render_template('products.html', products=products)
+    products = get_products_from_db()
+    summary = build_inventory_summary(products)
+    recommendations = build_ai_recommendations(products)
+    chart_data = build_chart_data(products)
+    activity = get_recent_activity(10)
+    return render_template('products.html', products=products, kpis=summary, ai_recommendations=recommendations, chart_data=chart_data, activity=activity)
 
 
 @app.route('/products/add', methods=['GET', 'POST'])
@@ -318,18 +637,29 @@ def products():
 def add_product():
     if request.method == 'POST':
         sku = request.form.get('sku') or f"SKU-{int(pd.Timestamp.now().timestamp())}"
-        name = request.form.get('name')
-        category = request.form.get('category')
-        region = request.form.get('region')
-        inventory = request.form.get('inventory', 0)
-        price = request.form.get('price', 0)
-        reorder_level = request.form.get('reorder_level', 0)
-
-        products = load_products()
-        products.append({'sku': sku, 'name': name, 'category': category, 'region': region, 'inventory': float(inventory), 'price': float(price), 'reorder_level': float(reorder_level)})
-        save_products(products)
-        flash('Product added', 'success')
-        return redirect(url_for('products'))
+        name = request.form.get('name', '').strip()
+        category = request.form.get('category', '').strip()
+        region = request.form.get('region', '').strip()
+        inventory = float(request.form.get('inventory', 0) or 0)
+        price = float(request.form.get('price', 0) or 0)
+        reorder_level = float(request.form.get('reorder_level', 0) or 0)
+        if not name:
+            return jsonify({'success': False, 'message': 'Name is required'}), 400
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute('INSERT INTO products (sku, name, category, region, inventory, price, reorder_level, created_by) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)', (sku, name, category, region, inventory, price, reorder_level, current_user.id))
+            conn.commit()
+            cur.close()
+            log_activity('Product Added', f'{name} ({sku})', get_current_user_id())
+            sync_inventory_notifications(get_products_from_db())
+            return jsonify({'success': True, 'message': 'Product added', 'product': serialize_product({'id': None, 'sku': sku, 'name': name, 'category': category, 'region': region, 'inventory': inventory, 'price': price, 'reorder_level': reorder_level})})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 400
+        finally:
+            if conn:
+                conn.close()
 
     return render_template('add_product.html')
 
@@ -337,40 +667,71 @@ def add_product():
 @app.route('/products/edit/<sku>', methods=['GET', 'POST'])
 @login_required
 def edit_product(sku):
-    products = load_products()
-    prod = next((p for p in products if p.get('sku') == sku), None)
-    if not prod:
-        flash('Product not found', 'danger')
-        return redirect(url_for('products'))
-
     if request.method == 'POST':
-        prod['name'] = request.form.get('name')
-        prod['category'] = request.form.get('category')
-        prod['region'] = request.form.get('region')
-        prod['inventory'] = float(request.form.get('inventory', 0))
-        prod['price'] = float(request.form.get('price', 0))
-        prod['reorder_level'] = float(request.form.get('reorder_level', 0))
-        save_products(products)
-        flash('Product updated', 'success')
-        return redirect(url_for('products'))
+        name = request.form.get('name', '').strip()
+        category = request.form.get('category', '').strip()
+        region = request.form.get('region', '').strip()
+        inventory = float(request.form.get('inventory', 0) or 0)
+        price = float(request.form.get('price', 0) or 0)
+        reorder_level = float(request.form.get('reorder_level', 0) or 0)
+        if not name:
+            return jsonify({'success': False, 'message': 'Name is required'}), 400
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute('UPDATE products SET name=%s, category=%s, region=%s, inventory=%s, price=%s, reorder_level=%s WHERE sku=%s', (name, category, region, inventory, price, reorder_level, sku))
+            conn.commit()
+            cur.close()
+            log_activity('Product Edited', f'{name} ({sku})', get_current_user_id())
+            sync_inventory_notifications(get_products_from_db())
+            return jsonify({'success': True, 'message': 'Product updated'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 400
+        finally:
+            if conn:
+                conn.close()
 
-    return render_template('edit_product.html', product=prod)
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute('SELECT * FROM products WHERE sku=%s', (sku,))
+        prod = cur.fetchone()
+        cur.close()
+        return render_template('edit_product.html', product=serialize_product(prod))
+    except Exception as e:
+        flash(str(e), 'danger')
+        return redirect(url_for('products'))
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/products/delete/<sku>', methods=['POST'])
 @login_required
 def delete_product(sku):
-    products = load_products()
-    products = [p for p in products if p.get('sku') != sku]
-    save_products(products)
-    flash('Product deleted', 'info')
-    return redirect(url_for('products'))
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM products WHERE sku=%s', (sku,))
+        conn.commit()
+        cur.close()
+        log_activity('Product Deleted', sku, get_current_user_id())
+        sync_inventory_notifications(get_products_from_db())
+        return jsonify({'success': True, 'message': 'Product deleted'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    finally:
+        if conn:
+            conn.close()
 
 
 @app.route('/export/products')
 @login_required
 def export_products():
-    products = load_products()
+    products = get_products_from_db()
     si = io.StringIO()
     writer = csv.writer(si)
     writer.writerow(['sku','name','category','region','inventory','price','reorder_level'])
@@ -379,7 +740,188 @@ def export_products():
     mem = io.BytesIO()
     mem.write(si.getvalue().encode('utf-8'))
     mem.seek(0)
+    log_activity('Export', 'Inventory CSV exported', get_current_user_id())
     return send_file(mem, mimetype='text/csv', as_attachment=True, download_name='products.csv')
+
+
+@app.route('/api/products', methods=['GET'])
+@login_required
+def api_products():
+    search = request.args.get('search', '')
+    category = request.args.get('category', '')
+    region = request.args.get('region', '')
+    status = request.args.get('status', '')
+    sort_by = request.args.get('sort_by', 'name')
+    sort_dir = request.args.get('sort_dir', 'asc')
+    products = get_products_from_db(search=search, category=category, region=region, status=status, sort_by=sort_by, sort_dir=sort_dir)
+    summary = build_inventory_summary(products)
+    return jsonify({'products': products, 'summary': summary, 'chart': build_chart_data(products), 'recommendations': build_ai_recommendations(products), 'activity': get_recent_activity(10)})
+
+
+@app.route('/api/products/<sku>', methods=['PUT'])
+@login_required
+def api_update_product(sku):
+    data = request.get_json() or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'success': False, 'message': 'Name is required'}), 400
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('UPDATE products SET name=%s, category=%s, region=%s, inventory=%s, price=%s, reorder_level=%s WHERE sku=%s', (
+            name, data.get('category',''), data.get('region',''), data.get('inventory',0), data.get('price',0), data.get('reorder_level',0), sku
+        ))
+        conn.commit()
+        cur.close()
+        log_activity('Product Edited', f'{name} ({sku})', get_current_user_id())
+        sync_inventory_notifications(get_products_from_db())
+        return jsonify({'success': True, 'message': 'Product updated'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/products/bulk', methods=['POST'])
+@login_required
+def api_bulk_products():
+    data = request.get_json() or {}
+    skus = data.get('skus') or []
+    action = data.get('action')
+    if not skus:
+        return jsonify({'success': False, 'message': 'No products selected'}), 400
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        if action == 'delete':
+            cur.executemany('DELETE FROM products WHERE sku=%s', [(sku,) for sku in skus])
+            log_activity('Bulk Delete', ','.join(skus), get_current_user_id())
+        elif action == 'category':
+            cur.execute('UPDATE products SET category=%s WHERE sku IN %s', (data.get('value'), tuple(skus)))
+            log_activity('Bulk Update', f'Category -> {data.get("value")}', get_current_user_id())
+        elif action == 'region':
+            cur.execute('UPDATE products SET region=%s WHERE sku IN %s', (data.get('value'), tuple(skus)))
+            log_activity('Bulk Update', f'Region -> {data.get("value")}', get_current_user_id())
+        elif action == 'reorder':
+            cur.execute('UPDATE products SET reorder_level=%s WHERE sku IN %s', (data.get('value'), tuple(skus)))
+            log_activity('Bulk Update', f'Reorder Level -> {data.get("value")}', get_current_user_id())
+        elif action == 'stock':
+            amount = float(data.get('value') or 0)
+            for sku in skus:
+                cur.execute('SELECT inventory FROM products WHERE sku=%s', (sku,))
+                row = cur.fetchone()
+                if row:
+                    cur.execute('UPDATE products SET inventory=%s WHERE sku=%s', (float(row[0]) + amount, sku))
+            log_activity('Bulk Update', f'Stock adjusted by {amount}', get_current_user_id())
+        conn.commit()
+        cur.close()
+        sync_inventory_notifications(get_products_from_db())
+        return jsonify({'success': True, 'message': 'Bulk operation completed'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/products/notes', methods=['GET', 'POST'])
+@login_required
+def api_notes():
+    user_id = get_current_user_id()
+    if request.method == 'POST':
+        note_text = request.get_json().get('note_text', '') if request.get_json() else ''
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT id FROM manager_notes WHERE user_id=%s', (user_id,))
+            row = cur.fetchone()
+            if row:
+                cur.execute('UPDATE manager_notes SET note_text=%s, last_saved=NOW() WHERE user_id=%s', (note_text, user_id))
+            else:
+                cur.execute('INSERT INTO manager_notes (user_id, note_text) VALUES (%s, %s)', (user_id, note_text))
+            conn.commit()
+            cur.close()
+            return jsonify({'success': True, 'message': 'Notes saved'})
+        except Exception as e:
+            return jsonify({'success': False, 'message': str(e)}), 400
+        finally:
+            if conn:
+                conn.close()
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute('SELECT note_text, last_saved FROM manager_notes WHERE user_id=%s', (user_id,))
+        row = cur.fetchone()
+        cur.close()
+        return jsonify({'note_text': row.get('note_text') if row else '', 'last_saved': row.get('last_saved') if row else None})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/products/report')
+@login_required
+def api_report():
+    products = get_products_from_db()
+    summary = build_inventory_summary(products)
+    buffer = build_pdf_report(products, summary)
+    response = make_response(buffer.getvalue())
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = 'attachment; filename=inventory_report.pdf'
+    log_activity('Report', 'PDF report generated', get_current_user_id())
+    return response
+
+
+@app.route('/api/products/reorder', methods=['POST'])
+@login_required
+def api_reorder():
+    data = request.get_json() or {}
+    skus = data.get('skus') or []
+    if not skus:
+        return jsonify({'success': False, 'message': 'No products selected'}), 400
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        for sku in skus:
+            cur.execute('SELECT inventory, reorder_level FROM products WHERE sku=%s', (sku,))
+            row = cur.fetchone()
+            if row:
+                inventory = float(row[0] or 0)
+                reorder_level = float(row[1] or 0)
+                quantity = max(1, int(reorder_level - inventory + 10))
+                cur.execute('UPDATE products SET reorder_level=%s WHERE sku=%s', (max(reorder_level, inventory + quantity), sku))
+                cur.execute('INSERT INTO reorder_history (product_sku, quantity, reason) VALUES (%s, %s, %s)', (sku, quantity, 'reorder'))
+        conn.commit()
+        cur.close()
+        log_activity('Reorder', ','.join(skus), get_current_user_id())
+        return jsonify({'success': True, 'message': 'Reorder action completed'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
+    finally:
+        if conn:
+            conn.close()
+
+
+@app.route('/api/products/smart-reorder', methods=['GET', 'POST'])
+@login_required
+def api_smart_reorder():
+    products = get_products_from_db()
+    suggestions = []
+    for product in products:
+        inventory = float(product.get('inventory') or 0)
+        reorder_level = float(product.get('reorder_level') or 0)
+        if inventory <= reorder_level:
+            suggested = max(10, int((reorder_level - inventory) * 2 + 10))
+            suggestions.append({'sku': product['sku'], 'name': product['name'], 'suggested_quantity': suggested})
+    return jsonify({'success': True, 'suggestions': suggestions})
 
 
 @app.route('/api/predict', methods=['POST'])
@@ -421,16 +963,8 @@ def api_predict():
 @app.route('/ai-insights')
 @login_required
 def ai_insights():
-    # Placeholder AI insights generated from products
-    products = load_products()
-    insights = []
-    if not products:
-        insights.append('No product data available. Upload inventory to generate AI insights.')
-    else:
-        insights.append('Top product by demand: SKU-1001')
-        insights.append('High demand category: Widgets')
-        insights.append('Seasonal peak: Q4')
-
+    products = get_products_from_db()
+    insights = build_ai_recommendations(products)
     return render_template('ai_insights.html', insights=insights)
 
 

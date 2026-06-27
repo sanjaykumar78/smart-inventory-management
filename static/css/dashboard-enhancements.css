@@ -1,0 +1,278 @@
+:root {
+  --card-bg: #ffffff;
+  --surface-bg: #f8fafc;
+  --text-color: #1f2937;
+  --muted: #6b7280;
+  --border-color: #e5e7eb;
+  --input-bg: #ffffff;
+  --primary: #2563eb;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+body.dark-theme,
+[data-theme="dark"] {
+  --card-bg: #111827;
+  --surface-bg: #0f172a;
+  --text-color: #f9fafb;
+  --muted: #94a3b8;
+  --border-color: rgba(255,255,255,0.12);
+  --input-bg: #1f2937;
+}
+
+.inventory-page { display: flex; flex-direction: column; gap: 1rem; }
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.25rem;
+}
+
+.card-modern {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--card-bg);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.kpi-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.kpi-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.inventory-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.inventory-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 240px;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--input-bg);
+}
+
+.inventory-search input {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  color: var(--text-color);
+}
+
+.table thead th {
+  background: var(--surface-bg);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.table td {
+  color: var(--text-color);
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary);
+}
+
+tr[data-status="low"] .status-chip {
+  background: rgba(217, 119, 6, 0.12);
+  color: var(--warning);
+}
+
+tr[data-status="critical"] .status-chip {
+  background: rgba(220, 38, 38, 0.12);
+  color: var(--danger);
+}
+
+tr[data-status="over"] .status-chip {
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--success);
+}
+
+@media (max-width: 767px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .inventory-toolbar {
+    align-items: stretch;
+  }
+
+  .inventory-search {
+    width: 100%;
+  }
+}
+
+.icc-alerts .badge{ display:inline-flex; align-items:center; gap:6px; margin:4px 6px 4px 0; padding:6px 8px; border-radius:999px; font-weight:700; }
+.badge-critical{ background: linear-gradient(90deg,var(--danger), #a61b1b); color:#fff; }
+.badge-warning{ background: linear-gradient(90deg,#e6c07a,var(--warning)); color:#111; }
+.badge-healthy{ background: linear-gradient(90deg,var(--success), #2ecc71); color:#fff; }
+
+.icc-list li{ display:flex; justify-content:space-between; align-items:center; padding:8px 6px; border-bottom:1px solid var(--border-color); }
+.icc-list .product-name{ font-weight:600; color:var(--text-color); }
+.icc-list .badge-perf{ font-size:0.75rem; padding:4px 6px; border-radius:6px; }
+.perf-high{ background: rgba(40,167,69,0.08); color:var(--success); border:1px solid rgba(40,167,69,0.08); }
+.perf-mid{ background: rgba(255,193,7,0.06); color:var(--warning); border:1px solid rgba(255,193,7,0.06); }
+.perf-low{ background: rgba(220,53,69,0.06); color:var(--danger); border:1px solid rgba(220,53,69,0.06); }
+
+.icc-row{ display:flex; gap:12px; }
+.icc-half{ flex:1; }
+
+.icc-reorder-list .reorder-item{ display:flex; justify-content:space-between; gap:8px; padding:8px; border-radius:6px; background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); margin-bottom:8px; border:1px solid var(--border-color); }
+.reorder-item .btn{ font-size:0.8rem; padding:6px 8px; }
+
+.icc-reminders li{ display:flex; justify-content:space-between; align-items:center; padding:8px; border-radius:6px; background: rgba(255,255,255,0.01); margin-bottom:6px; border:1px solid var(--border-color); }
+.icc-reminders .rem-notice{ color:var(--text-color); }
+.icc-rem-delete{ background:transparent; border:0; color:var(--danger); }
+
+.icc-ai-card{ background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); padding:8px 10px; border-radius:8px; color:var(--text-color); min-width:200px; border:1px solid var(--border-color); }
+
+/* Glassmorphism hover */
+.inventory-command-center .icc-section:hover{ transform: translateY(-4px); transition: transform 180ms ease; box-shadow: 0 10px 30px rgba(2,6,23,0.12); }
+
+@media (max-width: 1000px){
+  .icc-grid{ grid-template-columns: 1fr; }
+}
+
+/* Inventory Quick Actions Panel styles */
+.inv-quick-panel{ border-radius:10px; overflow:hidden; }
+.inv-quick-panel-body{ background: var(--card-bg); padding:16px; border-radius:8px; color:var(--text-color); border:1px solid var(--border-color); }
+.inv-quick-panel .btn{ border-radius:6px; }
+.inv-quick-panel .btn{ color:var(--text-color); transition: transform 140ms ease, box-shadow 140ms ease; }
+.inv-quick-panel .btn:hover{ transform: translateY(-3px); box-shadow: 0 8px 20px rgba(2,6,23,0.08); }
+.inv-health-card, .inv-notes-card, .inv-activity-card{ background: var(--card-bg); border:1px solid var(--border-color); color:var(--text-color); }
+.inv-health-card .fw-600{ font-weight:600; color:var(--muted); }
+.inv-notes-card textarea{ background: var(--input-bg); color: var(--input-text); border:1px solid var(--border-color); }
+.inv-activity-card .recent-activity{ max-height:160px; overflow:auto; }
+.inv-activity-card .recent-activity div{ padding:8px 6px; border-bottom:1px solid var(--border-color); }
+
+/* KPI badge styles for health summary */
+.inv-health-card .kpi-badge{ display:inline-block; padding:6px 10px; border-radius:6px; font-weight:700; }
+.inv-health-card .kpi-badge.kpi-success{ background: rgba(40,167,69,0.12); color: var(--success); border:1px solid rgba(40,167,69,0.08); }
+.inv-health-card .kpi-badge.kpi-warning{ background: rgba(255,193,7,0.08); color: var(--warning); border:1px solid rgba(255,193,7,0.06); }
+.inv-health-card .kpi-badge.kpi-danger{ background: rgba(220,53,69,0.08); color: var(--danger); border:1px solid rgba(220,53,69,0.06); }
+.inv-health-card .kpi-badge.kpi-info{ background: rgba(13,110,253,0.06); color: var(--primary); border:1px solid rgba(13,110,253,0.06); }
+
+/* Quick action buttons styling */
+.inv-quick-panel .btn-sm{ padding:6px 8px; font-size:0.85rem; }
+
+.bulk-action-toolbar{ margin-bottom:16px; border-radius:14px; background:rgba(13,110,253,0.06); border:1px solid rgba(13,110,253,0.16); }
+.bulk-action-toolbar .btn{ min-width:130px; }
+
+.drawer-panel{ position:fixed; top:0; right:0; height:100vh; width:360px; max-width:95vw; background:var(--card-bg); border-left:1px solid var(--border-color); transform:translateX(108%); transition:transform 260ms ease; z-index:1050; display:flex; flex-direction:column; box-shadow:-16px 0 48px rgba(0,0,0,0.16); }
+.drawer-panel.open{ transform:translateX(0); }
+.drawer-header{ display:flex; justify-content:space-between; align-items:center; padding:18px; border-bottom:1px solid var(--border-color); }
+.drawer-content{ padding:18px; overflow-y:auto; }
+.drawer-section{ margin-bottom:20px; }
+.drawer-key{ text-transform:uppercase; letter-spacing:0.08em; font-size:0.75rem; color:var(--muted); margin-bottom:8px; }
+.drawer-value{ font-size:1.05rem; font-weight:600; color:var(--text-color); }
+.clickable-card{ cursor:pointer; }
+.rich-text-editor{ min-height:140px; padding:12px; border:1px solid var(--border-color); border-radius:12px; background:var(--input-bg); color:var(--input-text); overflow:auto; }
+.rich-text-editor:empty:before{ content: attr(data-placeholder); color: var(--muted); }
+.inline-edit{ width:100%; border-radius:8px; }
+.toast-container{ position:fixed; right:18px; bottom:18px; z-index:1100; display:flex; flex-direction:column; gap:10px; }
+.toast-notification{ min-width:260px; max-width:320px; padding:12px 14px; border-radius:12px; background:rgba(13,110,253,0.95); color:#fff; box-shadow:0 12px 28px rgba(0,0,0,0.18); opacity:0; transform:translateY(12px); transition:opacity 220ms ease, transform 220ms ease; }
+.toast-notification.visible{ opacity:1; transform:translateY(0); }
+.toast-notification.success{ background:#198754; }
+.toast-notification.warning{ background:#ffc107; color:#212529; }
+.toast-notification.danger{ background:#dc3545; }
+.toast-notification.info{ background:#0d6efd; }
+.toast-notification.small{ font-size:0.9rem; }
+
+/* Dark-mode enforcement */
+body.dark-theme .inv-quick-panel-body{ box-shadow: 0 8px 30px rgba(2,6,23,0.6); }
+
+/* Ensure no gaps: make cards use full width responsively */
+@media (min-width: 992px){
+  .col-lg-8 .inv-quick-panel{ width:100%; }
+}
+
+@media (max-width: 767px){
+  .inv-quick-panel-body{ padding:12px; }
+}
+
+/* Predictions table - dark mode and general improvements */
+.predictions-table{ background: var(--card-bg); border-radius:6px; border:1px solid var(--border-color); }
+.predictions-table thead th{ font-weight:600; color:var(--text-color); }
+.predictions-table tbody td{ padding:0.65rem 0.75rem; color:var(--text-color); }
+
+/* Theme-aware styling for Recent Inventory Predictions */
+.predictions-table{
+  color: var(--text-color);
+}
+.predictions-table thead th{
+  background: var(--header-bg);
+  color: var(--text-color);
+  border-bottom: 1px solid var(--border-color);
+}
+.predictions-table tbody td{
+  font-weight:600;
+  border-top: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+.predictions-table tbody tr{ transition: background-color 200ms ease, transform 180ms ease; }
+.predictions-table tbody tr:hover{ background: var(--row-hover); }
+
+/* Stockout risk color coding */
+.predictions-table .stockout-risk.risk-low{ color: var(--success); }
+.predictions-table .stockout-risk.risk-medium{ color: var(--warning); }
+.predictions-table .stockout-risk.risk-high{ color: var(--danger); }
+
+/* Improve spacing and readability on small screens */
+@media (max-width: 767px){
+  .predictions-table thead{ display:none; }
+  .predictions-table tbody td{ display:block; width:100%; padding:0.45rem 0; }
+  .predictions-table tbody tr{ display:block; margin-bottom:10px; border-bottom:1px solid var(--border-color); padding-bottom:8px; }
+  .predictions-table tbody td:before{ content: attr(data-label); display:inline-block; width:110px; color:var(--muted); font-weight:700; }
+}
+
+/* Strong overrides to remove any white backgrounds coming from Bootstrap */
+.predictions-card{ background: var(--card-bg) !important; border: 1px solid var(--border-color) !important; }
+.predictions-card .card-body{ background: transparent !important; }
+.predictions-table{ background: transparent !important; }
+.predictions-table tbody,
+.predictions-table tbody tr,
+.predictions-table tbody td{ background: transparent !important; }
+
+/* If table-striped was accidentally applied, neutralize its white stripes */
+.predictions-table.table-striped tbody tr:nth-of-type(odd){ background: transparent !important; }
+
+/* Ensure header stays visible */
+.predictions-table thead th{ background: var(--header-bg) !important; color: var(--text-color) !important; }
+
+/* Re-affirm hover and risk colors */
+.predictions-table tbody tr:hover{ background: var(--row-hover) !important; }
+.predictions-table .stockout-risk.risk-low{ color: var(--success) !important; }
+.predictions-table .stockout-risk.risk-medium{ color: var(--warning) !important; }
+.predictions-table .stockout-risk.risk-high{ color: var(--danger) !important; }

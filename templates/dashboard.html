@@ -2,6 +2,7 @@
 
 {% block head_extra %}
   <link href="{{ url_for('static', filename='css/dashboard.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/dashboard-enhancements.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -10,37 +11,186 @@
   <div class="small text-muted">Welcome back, {{ current_user.id }}</div>
 </div>
 
+<!-- Top bar actions: Notifications + Quick Actions + Manager Notes shortcut -->
+<div class="d-flex align-items-center gap-3 mb-3">
+  <div class="ms-auto d-flex align-items-center gap-2">
+    <div class="dropdown">
+      <button id="notifBell" class="btn btn-sm btn-outline-secondary position-relative" data-bs-toggle="dropdown" aria-expanded="false">
+        <i class="bi bi-bell"></i>
+        <span id="notifCount" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">{{ alerts|length }}</span>
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end p-2" style="min-width:320px;" id="notifDropdown">
+        <li class="dropdown-header">Notifications</li>
+        <li><div id="notifList" class="px-2"></div></li>
+      </ul>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-sm btn-primary" id="quickAddProduct">+ Product</button>
+      <button class="btn btn-sm btn-outline-primary" id="quickRestock">Restock</button>
+      <button class="btn btn-sm btn-outline-secondary" id="openManagerNotes">Notes</button>
+    </div>
+  </div>
+</div>
+
 <!-- Top KPIs -->
 <div class="row g-3">
   <div class="col-md-3">
     <div class="card kpi-card">
       <div class="card-body">
-        <div class="kpi-title">Total Products</div>
-        <div class="kpi-value">{{ kpis.total_products }}</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="kpi-title">Total Products</div>
+            <div class="kpi-value">{{ kpis.total_products }}</div>
+          </div>
+          <div class="kpi-target">
+            <small class="text-muted">Target</small>
+            <div class="editable-target" data-key="target_total_products">{{ (local_targets.total_products if (local_targets is defined and local_targets.total_products is defined) else kpis.total_products) }}</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-md-3">
     <div class="card kpi-card">
       <div class="card-body">
-        <div class="kpi-title">Inventory Value</div>
-        <div class="kpi-value">{{ kpis.inventory_value }}</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="kpi-title">Inventory Value</div>
+            <div class="kpi-value">{{ kpis.inventory_value }}</div>
+          </div>
+          <div class="kpi-target">
+            <small class="text-muted">Target</small>
+            <div class="editable-target" data-key="target_inventory_value">{{ (local_targets.inventory_value if (local_targets is defined and local_targets.inventory_value is defined) else kpis.inventory_value) }}</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-md-3">
     <div class="card kpi-card">
       <div class="card-body">
-        <div class="kpi-title">Predicted Demand</div>
-        <div class="kpi-value">{{ kpis.predicted_demand }}</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="kpi-title">Predicted Demand</div>
+            <div class="kpi-value">{{ kpis.predicted_demand }}</div>
+          </div>
+          <div class="kpi-target">
+            <small class="text-muted">Target</small>
+            <div class="editable-target" data-key="target_predicted_demand">{{ (local_targets.predicted_demand if (local_targets is defined and local_targets.predicted_demand is defined) else kpis.predicted_demand) }}</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
   <div class="col-md-3">
     <div class="card kpi-card">
       <div class="card-body">
-        <div class="kpi-title">Low Stock Alerts</div>
-        <div class="kpi-value">{{ alerts|length }}</div>
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="kpi-title">Low Stock Alerts</div>
+            <div class="kpi-value">{{ alerts|length }}</div>
+          </div>
+          <div class="kpi-target">
+            <small class="text-muted">Target</small>
+            <div class="editable-target" data-key="target_low_stock_alerts">{{ (local_targets.low_stock_alerts if (local_targets is defined and local_targets.low_stock_alerts is defined) else alerts|length) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Smart Alerts + AI Confidence + Forecast -->
+<div class="row g-3 mt-3">
+  <div class="col-lg-5">
+    <div class="card alert-summary-card">
+      <div class="card-body d-flex align-items-center justify-content-between">
+        <div>
+          <div class="card-subtitle">Smart Alerts</div>
+          <div class="alert-items d-flex gap-3 mt-2">
+            <div class="small-alert">
+              <div class="alert-icon bg-danger text-white"><i class="bi bi-bell-fill"></i></div>
+              <div>
+                <div class="alert-label">Low Stock</div>
+                <div class="alert-value">{{ alerts|selectattr('level','equalto','low')|list|length if alerts is iterable else (alerts|length) }}</div>
+              </div>
+            </div>
+            <div class="small-alert">
+              <div class="alert-icon bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill"></i></div>
+              <div>
+                <div class="alert-label">Overstock</div>
+                <div class="alert-value">{{ kpis.overstock_count|default(0) }}</div>
+              </div>
+            </div>
+            <div class="small-alert">
+              <div class="alert-icon bg-info text-white"><i class="bi bi-graph-up-arrow"></i></div>
+              <div>
+                <div class="alert-label">Demand Spikes</div>
+                <div class="alert-value">{{ kpis.demand_spikes|default(0) }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ms-3 text-end d-none d-md-block">
+          <button class="btn btn-sm btn-outline-light" id="view-alerts">View Alerts</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card ai-confidence-card text-center">
+      <div class="card-body">
+        <div class="card-subtitle">AI Prediction Confidence</div>
+        <div class="confidence-ring mt-3" data-confidence="{{ kpis.prediction_confidence|default(72) }}">
+          <div class="confidence-value">{{ kpis.prediction_confidence|default(72) }}%</div>
+        </div>
+        <div class="mt-2 small text-muted">Model confidence for next 30 days</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3">
+    <div class="card forecast-card">
+      <div class="card-body">
+        <div class="card-subtitle">Forecast Calendar</div>
+        <div id="forecastList" class="mt-2 small"></div>
+        <div class="mt-2 d-flex gap-2">
+          <button class="btn btn-sm btn-outline-primary" id="addForecastEvent">Add Event</button>
+          <button class="btn btn-sm btn-outline-secondary" id="exportForecast">Export</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New middle row: Inventory Health, Heatmap, Leaderboard, Quick Actions -->
+<div class="row g-3 mt-3" id="dashboard-grid">
+  <div class="col-lg-4" data-draggable>
+    <div class="card">
+      <div class="card-body">
+        <h6>Inventory Health Score</h6>
+        <div id="healthScore" class="display-6 fw-bold mt-2">--</div>
+        <div class="small text-muted mt-1">Composite score based on stock balance and demand</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4" data-draggable>
+    <div class="card">
+      <div class="card-body">
+        <h6>Inventory Heat Map</h6>
+        <div id="heatMap" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4" data-draggable>
+    <div class="card">
+      <div class="card-body">
+        <h6>Top Products Leaderboard</h6>
+        <ol id="leaderboard" class="mt-2 ps-3"></ol>
       </div>
     </div>
   </div>
@@ -70,9 +220,22 @@
         <h6>AI Insights</h6>
         <ul class="list-unstyled">
           {% for rec in ai_recommendations %}
-            <li class="mb-2">• {{ rec }}</li>
+            <li class="mb-2 ai-recommendation d-flex justify-content-between align-items-center">
+              <div>• {{ rec }}</div>
+              <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-success rec-approve">Approve</button>
+                <button class="btn btn-outline-danger rec-reject">Reject</button>
+              </div>
+            </li>
           {% endfor %}
         </ul>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6>Recent Activity</h6>
+        <div id="recentActivityFeed" class="recent-activity mt-2"></div>
       </div>
     </div>
 
@@ -96,6 +259,43 @@
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Manager Notes modal (client-only editable) -->
+<div class="modal fade" id="managerNotesModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Manager Notes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <textarea id="managerNotes" class="form-control" rows="6" placeholder="Add manager notes..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button id="saveManagerNotes" class="btn btn-primary">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Floating AI Assistant -->
+<div id="aiAssistant" class="ai-assistant">
+  <button id="aiToggle" class="ai-btn btn btn-primary"><i class="bi bi-robot"></i></button>
+  <div id="aiPanel" class="ai-panel-card d-none">
+    <div class="ai-panel-header d-flex justify-content-between align-items-center">
+      <strong>AI Inventory Assistant</strong>
+      <button class="btn-close" id="closeAiPanel"></button>
+    </div>
+    <div class="ai-panel-body">
+      <div id="aiMessages" class="mb-2 small text-muted">Assistant is ready (local demo)</div>
+      <div class="input-group">
+        <input id="aiInput" class="form-control" placeholder="Ask about inventory...">
+        <button id="aiSend" class="btn btn-primary">Ask</button>
       </div>
     </div>
   </div>
@@ -163,4 +363,8 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
+{% endblock %}
+
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/dashboard-enhancements.js') }}"></script>
 {% endblock %}

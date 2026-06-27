@@ -8,7 +8,7 @@
   "alert_low_stock": true,
   "alert_reorder_suggestions": true,
   "alert_demand_spike": true,
-  "currency": "USD",
+  "currency": "RUPEES",
   "warehouse_location": "",
   "default_category": ""
 }
